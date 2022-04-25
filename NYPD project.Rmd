@@ -1,0 +1,192 @@
+---
+title: "NYPD Shooting Incident"
+author: "M. Marrakchi"
+date: "4/10/2022"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+First, installing the following packages the "tidyverse", "lubridate" and "formattable" and then run the the libraries related to those packages 
+```{r }
+
+library(tidyverse)
+library (lubridate)
+library (formattable)
+```
+
+
+
+## __Background and Objectives __
+The historical information regarding the shooting incidents in NYC is shared on the website DATA.ORG and could be accessed at this link https://catalog.data.gov/dataset/nypd-shooting-incident-data-historic.  \ 
+The objective of this project is the review and analysis of this dataset. In order to do so the below steps will be followed:\
+___1st step:___ Describe and import the dataset in a reproducible manner,\
+___2nd step___ Add to the document a summary of the data and clean  up the dataset by changing appropriate variables to factor and date types and getting rid of any columns not needed. And through the summary function check the existence of missing data, describe how this missing data will be handled,\
+___3rd step___ Add different visualizations and analysis to the project.\
+___4th step___ Write the conclusion to the project report and include any possible sources of bias.
+
+
+
+## __1st step - describe and import data:__
+The _NYPD Incident Incident Data (Historic)_ is important from the DATA.ORG website 
+
+```{r importing NYPD Data, message =FALSE}
+url_in <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
+NYPD <- read_csv (url_in)
+head (NYPD )
+```
+This dataset contains 19 variables as shown in the table above 
+
+## __2nd step - adding the summary and cleaning the data:__
+
+- summary of the data is displayed in order to read the review the content of the data
+```{r summary of the NYPD data, message =FALSE}
+summary(NYPD)
+
+```
+### __Possible bias__
+1- Expecting that the majority of the cases are in the Bronx,\
+2- The highest number of the incident are committed by the age group 18-24
+
+For this project, we will analyze the following information:\
+- shooting per BORO (town),\
+- shooting per perpetual age group, and \
+- shooting incident vs. death cases
+
+
+The unnecessary variables will be removed from the data set, i.e., INCIDENT_KEY, OCCUR_TIME,  PRECINCT, JURISDICTION_CODE, LOCATION_DESC, PERP_SEX, VIC_AGE_GROUP,PERP_RACE , VIC_SEX, VIC_RACE, X_COORD_CD, Y_COORD_CD, Latitude, Longitude and Lon_Lat.
+
+```{r}
+NYPD<- NYPD %>% select (-c(INCIDENT_KEY, OCCUR_TIME,  PRECINCT, JURISDICTION_CODE, LOCATION_DESC, PERP_SEX , PERP_RACE , VIC_AGE_GROUP, VIC_SEX, VIC_RACE, X_COORD_CD, Y_COORD_CD, Latitude, Longitude, Lon_Lat))
+```
+
+the remaining contains four variables, i.e., OCCUR_DATE, BORO, PERP_AGE_GROUP and STATISTICAL_MURDER_FLAG, all the remaining values have a character type, we transform the OCCUR_DATE date type and the BORO to factor type and change the name of the header of the Variable to Date, Town, tat_murder_flag, and Perp_age_group.
+
+```{r type transformation}
+
+NYPD$BORO <- factor(NYPD$BORO )
+NYPD$OCCUR_DATE = as.Date(NYPD$OCCUR_DATE, format = "%m/%d/%Y")
+names (NYPD) <- c("Date", "Town", "Stat_murder_flag" , "Perp_age_group")
+```
+The cleaned dataset contains `r nrow (NYPD)` shooting incidents occurred between `r min(NYPD$Date)` and `r max(NYPD$Date)` \
+_to keep the number of the incident updated that function was used "r nrow (NYPD)" and for the dates those functions were used  r min and max of the Date column._\
+
+There is missing data in  "Perp_age_group" of, `r round (100* sum(is.na(NYPD$Perp_age_group))/nrow (NYPD),2)`%.\
+_to keep the percentages updated that functions was used "r round (100* sum(is.na(NYPD$tPerp_age_group))/nrow (NYPD),2)"_\
+As the missing data represent around 35%, the analysis of the number of shooting  age groups will be carried out based on the remaining 65%.
+
+## __3nd step - Visualization and Analysis of the shooting incident__
+
+### __A- Number of shooting per town __
+#### _- We will analyse the shooting and death occurrence per Town._\
+
+Shooting incidents
+
+```{r}
+# we will group by Town
+NYPD_by_town <- NYPD %>% group_by(Town) %>% summarize(Cases = n(), Deaths = sum (Stat_murder_flag)) %>% select (Town, Cases, Deaths) %>% ungroup()
+NYPD_by_town
+
+# get the towns with the highest and lowest number of shootings
+NYPD_by_town %>%  slice_max(Cases, n=1)  
+
+#Creating a histogram for the number of shootings per weekday.
+ NYPD_by_town %>% ggplot(aes(x= Town, y = Cases)) + geom_col (fill = "#325790") + coord_flip()  +  theme_bw() + labs(title= "Number of shooting per Town", x = "Towns", y = "Cases")
+```
+
+Deaths
+
+```{r}
+# get the towns with the highest and lowest number of shootings
+NYPD_by_town %>%  slice_max(Deaths, n=1)  
+
+#Creating a histogram for the number of shootings per weekday.
+ NYPD_by_town %>% ggplot(aes(x= Town, y = Deaths)) + geom_col (fill = "#325790") + coord_flip()  +  theme_bw() + labs(title= "Number of deaths per Town", x = "Towns", y = "Deaths")
+```
+
+
+#### _- We will analyze the death rate per shooting per town_
+
+```{r}
+#we will group by town and calculate the number of cases, deaths and ration Death / Cases 
+NYPD_death_rate_by_town <- NYPD %>% group_by(Town) %>% summarize (Cases = n(), Deaths = sum (Stat_murder_flag)) %>% mutate (Death_Rate = round( Deaths/Cases, 2) )
+NYPD_death_rate_by_town
+#Creating a histogram  for the number death rate per town.
+NYPD_death_rate_by_town %>% ggplot(aes(x= Town, y = Death_Rate)) + geom_col (fill = "#325790") + coord_flip() +  theme_bw() + labs(title= "Death rate per Town", x ="Towns", y = "Death Rate")
+
+```
+
+#### _Conclusion on the shooting and the rate by town._\
+
+The highest number of shootings occurred was in Brooklyn and the lowest one was on Staten Island. The dataset was missing the population per town; therefore, it was not possible to compare the shooting rate per capita which would provide more information about the level of shooting risks in each of the five towns.\
+
+The second comparison was based on the death rate per shooting for each town, it shows that the rates are around 20 %, the highest one was in Staten Island with a rate of 21% and the lowest was in Manhattan with a rate of 18%.
+
+
+
+
+### __B- Number of shooting per perpetual age group __
+
+#### _- We will analyse the number of shooting per perpetual age group_\
+
+```{r}
+#we will group by perp age group and calculate the cases  
+NYPD_death_per_perp_age <- NYPD %>% filter (Perp_age_group == "<18" | Perp_age_group == "18-24" | Perp_age_group == "25-44" | Perp_age_group == "45-64" | Perp_age_group == "65+" ) %>% group_by(Perp_age_group) %>% summarize (Cases = n())
+NYPD_death_per_perp_age <- NYPD_death_per_perp_age %>% mutate (Percentage = percent (Cases / sum(NYPD_death_per_perp_age$Cases),0))
+NYPD_death_per_perp_age 
+#Creating a histogram  for the number of cases per prep age group.
+
+NYPD_death_per_perp_age %>% ggplot(aes(Perp_age_group , Cases)) + geom_col(fill = "#325790") + coord_flip() + theme_bw() +  labs (title = "Cases per prep age group", x = "Perp Age Group", y= "Cases")
+
+```
+
+
+#### _- Conclusion the number of shooting per perpetual age group_\
+
+As predicted the highest number of incident per perpetual age group was for those between 18-24, which were 5508 cases representing 45% of the total cases.
+
+
+### __C- Modeling __\
+
+Now we will check if there is a relationship between the number of shooting and the number of death, for this we will build a linear model between those two variables from 2006 to 2020 
+
+
+```{r}
+#first we need to create a subdata that shows the cases and death per day
+NYPD_death_rate_by_month <- NYPD %>% mutate (Month = format (as.Date (NYPD$Date), "%Y/%m")) %>% group_by(Month) %>% summarize (Cases = n(), Deaths = sum (Stat_murder_flag))
+# creat the model 
+mod <- lm(Deaths ~ Cases , data = NYPD_death_rate_by_month)
+summary(mod)
+# predict number of deaths based on the model
+pred <- tibble (pred = predict(mod))
+NYPD_death_rate_by_month_pred <- cbind(NYPD_death_rate_by_month,pred)
+#Plot the prediction with actual cases and deaths
+NYPD_death_rate_by_month_pred %>% ggplot () + geom_point(aes(x=Cases, y=Deaths), size = 3, color = "#0A1EF5", alpha = 0.5) + geom_smooth(aes(x=Cases, y=Deaths), color = "#B16E97")  + geom_line(aes(x = Cases, y = pred ),linetype = "dashed", color = "black") +  theme_bw() + labs(title = "Model deaths with cases", y= "Deaths", x = "Cases")
+```
+
+#### _- Conclusion_\
+
+We could assume that there is a linear relationship between the number of cases ad the number of deaths 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
